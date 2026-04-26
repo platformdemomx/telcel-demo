@@ -11,7 +11,78 @@ const C = {
   text:"#F4F4F4", textMid:"#A8A8A8", textDim:"#6F6F6F", textDisabled:"#525252",
 };
 
-// ─── HOOK ─────────────────────────────────────────────────────────────────────
+// ─── PASSWORD GATE ────────────────────────────────────────────────────────────
+const ACCESS_CODE = "terraform24";
+
+function PasswordGate({ onUnlock }) {
+  const [input, setInput] = useState("");
+  const [error, setError] = useState(false);
+  const [shake, setShake] = useState(false);
+
+  const attempt = () => {
+    if (input.toLowerCase() === ACCESS_CODE) {
+      onUnlock();
+    } else {
+      setError(true);
+      setShake(true);
+      setInput("");
+      setTimeout(() => setShake(false), 500);
+    }
+  };
+
+  return (
+    <div style={{ minHeight:"100vh", background:C.bg, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:"32px 24px", fontFamily:"'IBM Plex Sans','Segoe UI',sans-serif" }}>
+      <div style={{ width:"100%", maxWidth:"340px", animation:"fadeUp 0.5s ease" }}>
+        <div style={{ width:"48px", height:"48px", background:C.purple, borderRadius:"12px", display:"flex", alignItems:"center", justifyContent:"center", fontSize:"20px", fontWeight:"800", color:"white", fontFamily:"'IBM Plex Mono',monospace", marginBottom:"28px" }}>tf</div>
+
+        <h1 style={{ fontSize:"24px", fontWeight:"800", color:C.text, margin:"0 0 6px" }}>Acceso restringido</h1>
+        <p style={{ fontSize:"13px", color:C.textMid, margin:"0 0 32px", lineHeight:"1.6" }}>Ingresa la clave de acceso para continuar.</p>
+
+        <div style={{
+          animation: shake ? "shake 0.4s ease" : "none",
+          marginBottom:"12px",
+        }}>
+          <input
+            type="password"
+            value={input}
+            onChange={e => { setInput(e.target.value); setError(false); }}
+            onKeyDown={e => e.key === "Enter" && attempt()}
+            placeholder="Clave de acceso"
+            style={{
+              width:"100%", padding:"14px 16px",
+              background:C.surface,
+              border:`1px solid ${error ? "#FA4D56" : C.border}`,
+              borderRadius:"10px", color:C.text,
+              fontSize:"15px", fontFamily:"inherit",
+              outline:"none", letterSpacing:"2px",
+              transition:"border 0.2s",
+            }}
+          />
+          {error && <div style={{ color:"#FA4D56", fontSize:"12px", marginTop:"6px", marginLeft:"2px" }}>Clave incorrecta. Intenta de nuevo.</div>}
+        </div>
+
+        <button onClick={attempt} style={{
+          width:"100%", padding:"14px",
+          background:C.blue, border:"none", borderRadius:"10px",
+          color:"white", fontSize:"14px", fontWeight:"700",
+          cursor:"pointer", fontFamily:"inherit",
+        }}>
+          Entrar →
+        </button>
+      </div>
+
+      <style>{`
+        @keyframes shake {
+          0%,100%{transform:translateX(0);}
+          20%{transform:translateX(-8px);}
+          40%{transform:translateX(8px);}
+          60%{transform:translateX(-6px);}
+          80%{transform:translateX(6px);}
+        }
+      `}</style>
+    </div>
+  );
+}
 function HookScene() {
   const [step, setStep] = useState(0);
   useEffect(() => {
@@ -975,6 +1046,7 @@ const PHASES = ["hook","arch","team","portal","ide","plan","approval","result","
 const PHASE_LABELS = { hook:"Intro", arch:"Arquitectura", team:"Equipo", portal:"Portal", ide:"Archivos", plan:"Plan", approval:"Aprobación", result:"Resultado", cambio:"Una línea = un cambio", cierre:"Antes y ahora" };
 
 export default function App() {
+  const [unlocked, setUnlocked] = useState(false);
   const [phase, setPhase] = useState("hook");
   const [fileKey, setFileKey] = useState("providers");
   const [selection, setSelection] = useState(null);
@@ -1028,6 +1100,8 @@ export default function App() {
   };
 
   const showNav = phase !== "team" && phase !== "portal" && phase !== "approval" && phase !== "cierre";
+
+  if (!unlocked) return <PasswordGate onUnlock={() => setUnlocked(true)} />;
 
   return (
     <div style={{ minHeight:"100vh", background:C.bg, color:C.text, display:"flex", flexDirection:"column", maxWidth:"440px", margin:"0 auto", fontFamily:"'IBM Plex Sans','Segoe UI',sans-serif" }}>
