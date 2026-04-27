@@ -384,6 +384,49 @@ provider "vault" {
   namespace = "telcel"
 }`,
 
+variables:`# variables.tf — parámetros del proyecto
+# Define qué información necesita Terraform para operar.
+# Los valores concretos los genera el portal automáticamente.
+
+variable "namespace_name" {
+  description = "Nombre del namespace a crear"
+  type        = string
+
+  validation {
+    condition     = can(regex("^[a-z0-9-]+$", var.namespace_name))
+    error_message = "Solo minúsculas, números y guiones."
+  }
+}
+
+variable "perfil" {
+  description = "Tipo de carga de trabajo"
+  type        = string
+
+  validation {
+    condition = contains(
+      ["backend", "frontend", "microservicios", "apis", "datos"],
+      var.perfil
+    )
+    error_message = "Perfil no válido para el catálogo Telcel."
+  }
+}
+
+variable "tamaño" {
+  description = "Tamaño del namespace: chico, mediano o grande"
+  type        = string
+  default     = "mediano"
+}
+
+variable "equipo" {
+  description = "Equipo dueño del namespace"
+  type        = string
+}
+
+variable "cluster_context" {
+  description = "Clúster destino"
+  type        = string
+}`,
+
 main:`# main.tf — namespace, quotas y accesos
 
 locals {
@@ -453,6 +496,9 @@ const META_IDE = {
   providers:{ label:"providers.tf",        icon:"🔌", tag:"Conexiones",  tagColor:C.blue,
     what:"Define con qué plataformas habla Terraform. On-premise, nube y seguridad — todo declarado en un lugar.",
     telcel:"Si mañana se agrega otra nube, se suma un bloque. El resto del código no cambia." },
+  variables:{ label:"variables.tf",        icon:"📋", tag:"Parámetros",  tagColor:C.purple,
+    what:"Declara qué información necesita el proyecto. No tiene valores concretos — define el contrato: qué se puede configurar y qué entradas son válidas. Las validaciones rechazan configuraciones incorrectas antes de tocar la infraestructura.",
+    telcel:"El perfil y el tamaño del catálogo viven aquí como variables. Si alguien intenta poner un perfil que no existe, el sistema lo rechaza antes de crear nada. Las sesiones de aclaración desaparecen." },
   main:     { label:"main.tf",             icon:"⚙️", tag:"Recursos",    tagColor:C.green,
     what:"Crea el namespace con sus quotas. El tamaño elegido en el portal se traduce directamente a límites de CPU, memoria y pods.",
     telcel:"Esto es lo que hoy hace manualmente el equipo de plataforma en cada solicitud. Con Terraform, se ejecuta una vez y se repite idéntico." },
@@ -460,7 +506,7 @@ const META_IDE = {
     what:"Sentinel es el motor de políticas de Terraform Enterprise. Define reglas que toda configuración debe cumplir antes de que el apply proceda.",
     telcel:"Las reglas del equipo de plataforma viven en código. Nadie puede crear un namespace grande sin aprobación explícita — es una política, no un proceso manual." },
 };
-const IDE_ORDER = ["providers","main","policy"];
+const IDE_ORDER = ["providers","variables","main","policy"];
 
 function hlCode(line) {
   if (line.trimStart().startsWith("#")) return `<span style="color:${C.textDim};font-style:italic">${line.replace(/&/g,"&amp;")}</span>`;
