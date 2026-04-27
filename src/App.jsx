@@ -809,10 +809,14 @@ function ResultScene({ selection }) {
 
 // ─── CAMBIO SCENE — inventario → solicitud → aprobación → apply ───────────────
 function CambioScene({ selection }) {
-  const [step, setStep] = useState("inventory"); // inventory | request | approval | applying | done
+  const [step, setStep] = useState("inventory");
+  const [newSize, setNewSize] = useState(null);
   const [applyLines, setApplyLines] = useState([]);
   const equipo = selection?.equipo || "mi-equipo";
   const nsName = `${equipo}-${selection?.prof?.id||"backend"}-prod`;
+  const currentSize = selection?.sel || SIZES.find(s => s.id === "mediano");
+  const availableSizes = SIZES.filter(s => s.id !== currentSize.id);
+  const selectedNewSize = SIZES.find(s => s.id === newSize);
 
   const runApply = () => {
     setStep("applying");
@@ -848,7 +852,7 @@ function CambioScene({ selection }) {
             <div style={{ background:C.greenDim, border:`1px solid ${C.green}`, borderRadius:"20px", padding:"2px 10px", fontSize:"10px", fontWeight:"700", color:C.green }}>active</div>
           </div>
           <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:"6px", marginBottom:"12px" }}>
-            {[["Perfil",selection?.prof?.label||"backend"],["Tamaño","Mediano"],["Destino",selection?.destObj?.label||"Kubernetes"]].map(([k,v],i) => (
+            {[["Perfil",selection?.prof?.label||"backend"],["Tamaño",currentSize.label],["Destino",selection?.destObj?.label||"Kubernetes"]].map(([k,v],i) => (
               <div key={i} style={{ background:C.surface2, borderRadius:"6px", padding:"6px 8px" }}>
                 <div style={{ fontSize:"9px", color:C.textMid }}>{k}</div>
                 <div style={{ fontSize:"11px", fontWeight:"700", color:C.blueLight }}>{v}</div>
@@ -872,17 +876,34 @@ function CambioScene({ selection }) {
       {/* ── REQUEST ── */}
       {step === "request" && (<>
         <div style={{ fontSize:"10px", fontWeight:"700", color:C.blueLight, letterSpacing:"2px", marginBottom:"4px" }}>SOLICITAR CAMBIO</div>
-        <h2 style={{ fontSize:"18px", fontWeight:"700", margin:"0 0 4px", color:C.text }}>Upgrade de recursos.</h2>
+        <h2 style={{ fontSize:"18px", fontWeight:"700", margin:"0 0 4px", color:C.text }}>Cambio de tamaño.</h2>
         <p style={{ fontSize:"13px", color:C.textMid, margin:"0 0 16px" }}>Namespace: <span style={{ color:C.blueLight, fontFamily:"'IBM Plex Mono',monospace" }}>{nsName}</span></p>
 
         <div style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:"10px", padding:"14px", marginBottom:"14px" }}>
-          <div style={{ fontSize:"10px", color:C.textMid, marginBottom:"12px", fontWeight:"700", letterSpacing:"1px" }}>CAMBIO SOLICITADO</div>
-          {[["Tamaño actual","Mediano — 4 CPU · 8Gi · 25 pods"],["Tamaño nuevo","Grande — 8 CPU · 16Gi · 50 pods"],["Motivo","Crecimiento de carga en producción"]].map(([k,v],i) => (
-            <div key={i} style={{ padding:"8px 0", borderBottom:i<2?`1px solid ${C.border}`:"none" }}>
-              <div style={{ fontSize:"10px", color:C.textMid, marginBottom:"2px" }}>{k}</div>
-              <div style={{ fontSize:"12px", color: i===1 ? C.orange : C.text, fontWeight: i===1 ? "700" : "400" }}>{v}</div>
-            </div>
-          ))}
+          <div style={{ fontSize:"10px", color:C.textMid, marginBottom:"10px", fontWeight:"700", letterSpacing:"1px" }}>TAMAÑO ACTUAL</div>
+          <div style={{ background:C.surface2, borderRadius:"8px", padding:"10px 12px", marginBottom:"14px" }}>
+            <div style={{ fontSize:"13px", fontWeight:"700", color:C.text }}>{currentSize.label}</div>
+            <div style={{ fontSize:"11px", color:C.textMid, marginTop:"2px" }}>{currentSize.cpu} CPU · {currentSize.memory} · {currentSize.pods} pods</div>
+          </div>
+
+          <div style={{ fontSize:"10px", color:C.textMid, marginBottom:"8px", fontWeight:"700", letterSpacing:"1px" }}>NUEVO TAMAÑO</div>
+          <div style={{ display:"flex", flexDirection:"column", gap:"6px", marginBottom:"4px" }}>
+            {availableSizes.map(s => (
+              <button key={s.id} onClick={() => setNewSize(s.id)} style={{
+                display:"flex", alignItems:"center", justifyContent:"space-between",
+                padding:"10px 12px",
+                background: newSize===s.id ? `${C.orange}22` : C.surface2,
+                border:`1px solid ${newSize===s.id ? C.orange : C.border}`,
+                borderRadius:"8px", cursor:"pointer", fontFamily:"inherit", transition:"all 0.2s",
+              }}>
+                <div style={{ textAlign:"left" }}>
+                  <div style={{ fontSize:"13px", fontWeight:"700", color:newSize===s.id ? C.orange : C.text }}>{s.label}</div>
+                  <div style={{ fontSize:"11px", color:C.textMid }}>{s.cpu} CPU · {s.memory} · {s.pods} pods</div>
+                </div>
+                {newSize===s.id && <span style={{ color:C.orange, fontSize:"16px" }}>●</span>}
+              </button>
+            ))}
+          </div>
         </div>
 
         <div style={{ background:`${C.yellow}11`, border:`1px solid ${C.yellow}33`, borderRadius:"8px", padding:"10px 12px", marginBottom:"14px", fontSize:"12px", color:C.textMid }}>
@@ -891,7 +912,7 @@ function CambioScene({ selection }) {
 
         <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"8px" }}>
           <button onClick={() => setStep("inventory")} style={{ padding:"12px", background:"transparent", border:`1px solid ${C.border}`, borderRadius:"8px", color:C.textMid, fontSize:"12px", cursor:"pointer", fontFamily:"inherit" }}>← Cancelar</button>
-          <button onClick={() => setStep("approval")} style={{ padding:"12px", background:C.blue, border:"none", borderRadius:"8px", color:"white", fontSize:"12px", fontWeight:"700", cursor:"pointer", fontFamily:"inherit" }}>Enviar →</button>
+          <button onClick={() => newSize && setStep("approval")} disabled={!newSize} style={{ padding:"12px", background:newSize?C.blue:C.surface2, border:"none", borderRadius:"8px", color:newSize?"white":C.textDisabled, fontSize:"12px", fontWeight:"700", cursor:newSize?"pointer":"not-allowed", fontFamily:"inherit" }}>Enviar →</button>
         </div>
       </>)}
 
@@ -909,7 +930,7 @@ function CambioScene({ selection }) {
 
         <div style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:"10px", padding:"14px", marginBottom:"12px" }}>
           <div style={{ fontSize:"10px", fontWeight:"700", color:C.blueLight, letterSpacing:"1px", marginBottom:"10px" }}>SOLICITUD</div>
-          {[["Namespace",nsName],["Solicitante",equipo],["Cambio","Mediano → Grande"]].map(([k,v],i) => (
+          {[["Namespace",nsName],["Solicitante",equipo],["Cambio",`${currentSize.label} → ${selectedNewSize?.label||""}`]].map(([k,v],i) => (
             <div key={i} style={{ padding:"7px 0", borderBottom:i<2?`1px solid ${C.border}`:"none" }}>
               <div style={{ fontSize:"10px", color:C.textMid }}>{k}</div>
               <div style={{ fontSize:"12px", fontWeight:"700", color:C.blueLight, fontFamily:"'IBM Plex Mono',monospace" }}>{v}</div>
@@ -923,9 +944,9 @@ function CambioScene({ selection }) {
           <div style={{ padding:"10px 12px", fontFamily:"'IBM Plex Mono',monospace", fontSize:"11px", lineHeight:"1.8" }}>
             {[
               { t:`~ kubernetes_resource_quota.this`, c:C.orange },
-              { t:`    requests.cpu:    "4" → "8"`, c:C.orange },
-              { t:`    requests.memory: "8Gi" → "16Gi"`, c:C.orange },
-              { t:`    pods:            "25" → "50"`, c:C.orange },
+              { t:`    requests.cpu:    "${currentSize.cpu}" → "${selectedNewSize?.cpu||""}"`, c:C.orange },
+              { t:`    requests.memory: "${currentSize.memory}" → "${selectedNewSize?.memory||""}"`, c:C.orange },
+              { t:`    pods:            "${currentSize.pods}" → "${selectedNewSize?.pods||""}"`, c:C.orange },
             ].map((l,i) => <div key={i} style={{ color:l.c }}>  {l.t}</div>)}
           </div>
         </div>
@@ -959,7 +980,7 @@ function CambioScene({ selection }) {
                 <div style={{ background:C.greenDim, border:`1px solid ${C.green}`, borderRadius:"20px", padding:"2px 10px", fontSize:"10px", fontWeight:"700", color:C.green }}>active</div>
               </div>
               <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:"6px" }}>
-                {[["Perfil",selection?.prof?.label||"backend"],["Tamaño","Grande ↑"],["Destino",selection?.destObj?.label||"Kubernetes"]].map(([k,v],i) => (
+                {[["Perfil",selection?.prof?.label||"backend"],[`Tamaño`,`${selectedNewSize?.label||"Grande"} ↑`],["Destino",selection?.destObj?.label||"Kubernetes"]].map(([k,v],i) => (
                   <div key={i} style={{ background:C.surface2, borderRadius:"6px", padding:"6px 8px" }}>
                     <div style={{ fontSize:"9px", color:C.textMid }}>{k}</div>
                     <div style={{ fontSize:"11px", fontWeight:"700", color: i===1 ? C.orange : C.blueLight }}>{v}</div>
