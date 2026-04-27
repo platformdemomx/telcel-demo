@@ -741,22 +741,30 @@ function ResultScene({ selection }) {
   const [applyDone, setApplyDone] = useState(false);
   const dest = selection?.destObj;
   const resources = PLAN_STEPS_BY_DEST[selection?.dest] || PLAN_STEPS_BY_DEST.k8s;
+  const nsName = `${selection?.equipo||"equipo"}-${selection?.prof?.id||"backend"}-prod`;
+
+  // Generate realistic timestamps
+  const now = new Date();
+  const pad = n => String(n).padStart(2,"0");
+  const dateStr = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}`;
+  const timeStr = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())} CST`;
+  const commitId = Math.random().toString(16).slice(2,10);
+  const runId = `run-${Math.random().toString(36).slice(2,9).toUpperCase()}`;
 
   useEffect(() => {
     const steps = [
       { t:"Applying...", c:C.textMid },
       { t:"", c:"transparent" },
-      ...resources.map((r,i) => ({ t:`  ${r}: Creating...`, c:C.textMid, delay: i*600 })),
-      ...resources.map((r,i) => ({ t:`  ${r}: Creation complete ✓`, c:C.green, delay: resources.length*600 + i*300 })),
+      ...resources.map((r) => ({ t:`  ${r}: Creating...`, c:C.textMid })),
+      ...resources.map((r) => ({ t:`  ${r}: Creation complete ✓`, c:C.green })),
       { t:"", c:"transparent" },
       { t:`Apply complete! Resources: ${resources.length} added, 0 changed, 0 destroyed.`, c:C.green, bold:true },
     ];
-    let base = 400;
     steps.forEach((step, i) => {
       setTimeout(() => {
         setApplyLines(prev => [...prev, step]);
         if (i === steps.length - 1) setApplyDone(true);
-      }, base + i * 280);
+      }, 400 + i * 280);
     });
   }, []);
 
@@ -773,33 +781,66 @@ function ResultScene({ selection }) {
         {!applyDone && <span style={{ color:C.blueLight, animation:"blink 1s infinite" }}>▊</span>}
       </div>
 
-      {/* Result card */}
+      {/* Deployment summary */}
       {applyDone && (
         <div style={{ animation:"fadeUp 0.5s ease" }}>
-          <div style={{ background:dest?`${dest.color}22`:C.surface, border:`1px solid ${dest?.color||C.border}`, borderRadius:"12px", padding:"16px", marginBottom:"16px" }}>
-            <div style={{ display:"flex", alignItems:"center", gap:"10px", marginBottom:"14px" }}>
-              <span style={{ fontSize:"24px" }}>{dest?.icon}</span>
-              <div>
-                <div style={{ fontSize:"14px", fontWeight:"700", color:dest?.color||C.text }}>{dest?.label}</div>
-                <div style={{ fontSize:"11px", color:C.textMid }}>{dest?.sub}</div>
+
+          {/* Status header */}
+          <div style={{ background:C.greenDim, border:`1px solid ${C.green}`, borderRadius:"10px", padding:"12px 14px", marginBottom:"14px", display:"flex", alignItems:"center", gap:"12px" }}>
+            <span style={{ fontSize:"22px" }}>✅</span>
+            <div>
+              <div style={{ fontSize:"14px", fontWeight:"700", color:C.green }}>Namespace creado exitosamente</div>
+              <div style={{ fontSize:"11px", color:C.textMid, fontFamily:"'IBM Plex Mono',monospace" }}>{dateStr} · {timeStr}</div>
+            </div>
+          </div>
+
+          {/* Main summary card */}
+          <div style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:"12px", overflow:"hidden", marginBottom:"14px" }}>
+            <div style={{ background:C.surface2, padding:"10px 14px", borderBottom:`1px solid ${C.border}` }}>
+              <div style={{ fontSize:"10px", fontWeight:"700", color:C.blueLight, letterSpacing:"2px" }}>COMPROBANTE DE ENTREGA</div>
+              <div style={{ fontSize:"11px", color:C.textDim, fontFamily:"'IBM Plex Mono',monospace", marginTop:"2px" }}>{runId}</div>
+            </div>
+
+            <div style={{ padding:"14px" }}>
+              {/* Namespace identifier */}
+              <div style={{ background:"#0a0a0a", borderRadius:"8px", padding:"10px 12px", marginBottom:"12px", fontFamily:"'IBM Plex Mono',monospace" }}>
+                <div style={{ fontSize:"10px", color:C.textDim, marginBottom:"3px" }}>NAMESPACE</div>
+                <div style={{ fontSize:"14px", fontWeight:"700", color:C.blueLight }}>{nsName}</div>
               </div>
-              <div style={{ marginLeft:"auto", background:C.greenDim, border:`1px solid ${C.green}`, borderRadius:"20px", padding:"3px 10px", fontSize:"10px", fontWeight:"700", color:C.green }}>active</div>
+
+              {/* Grid of key fields */}
+              <div style={{ display:"flex", flexDirection:"column", gap:"6px" }}>
+                {[
+                  ["Equipo solicitante",   selection?.equipo || "—"],
+                  ["Perfil de aplicación", selection?.prof?.label || "—"],
+                  ["Tamaño",               selection?.sel?.label || "—"],
+                  ["CPU asignada",         `${parseInt(selection?.sel?.cpu||"4")*2} cores`],
+                  ["Memoria asignada",     `${parseInt(selection?.sel?.memory||"8")*2}Gi`],
+                  ["Pods máximos",         selection?.sel?.pods || "—"],
+                  ["Plataforma destino",   dest?.label || "—"],
+                  ["Ambiente",             dest?.sub || "—"],
+                  ["Fecha de creación",    dateStr],
+                  ["Hora de entrega",      timeStr],
+                  ["Aplicado por",         "terraform-enterprise[bot]"],
+                  ["Commit",               commitId],
+                  ["Estado",               "active"],
+                ].map(([k,v],i) => (
+                  <div key={i} style={{
+                    display:"flex", justifyContent:"space-between", alignItems:"flex-start",
+                    padding:"7px 0",
+                    borderBottom: i < 12 ? `1px solid ${C.border}` : "none",
+                  }}>
+                    <span style={{ fontSize:"11px", color:C.textMid, flexShrink:0, marginRight:"12px" }}>{k}</span>
+                    <span style={{ fontSize:"11px", fontWeight:"700", color:C.text, fontFamily:"'IBM Plex Mono',monospace", textAlign:"right", wordBreak:"break-all" }}>{v}</span>
+                  </div>
+                ))}
+              </div>
             </div>
-            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"6px" }}>
-              {[
-                ["Namespace",`${selection?.equipo||"equipo"}-${selection?.prof?.id||"backend"}-prod`],
-                ["Perfil",selection?.prof?.label],
-                ["Tamaño",selection?.sel?.label],
-                ["CPU",`${parseInt(selection?.sel?.cpu||"4")*2} cores`],
-                ["Memoria",`${parseInt(selection?.sel?.memory||"8")*2}Gi`],
-                ["Pods máx.",selection?.sel?.pods],
-              ].map(([k,v],i) => (
-                <div key={i} style={{ background:"rgba(0,0,0,0.3)", borderRadius:"6px", padding:"7px 10px" }}>
-                  <div style={{ fontSize:"10px", color:C.textMid }}>{k}</div>
-                  <div style={{ fontSize:"12px", fontWeight:"700", color:C.text, fontFamily:"'IBM Plex Mono',monospace" }}>{v}</div>
-                </div>
-              ))}
-            </div>
+          </div>
+
+          {/* Callout */}
+          <div style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:"10px", padding:"12px 14px", fontSize:"12px", color:C.textMid, lineHeight:"1.6" }}>
+            💡 Estos datos quedan registrados en Terraform Enterprise. Están disponibles para auditorías, CMDB y cualquier formato interno que necesiten completar.
           </div>
         </div>
       )}
