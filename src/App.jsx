@@ -11,7 +11,7 @@ const C = {
   text:"#F4F4F4", textMid:"#A8A8A8", textDim:"#6F6F6F", textDisabled:"#525252",
 };
 
-// ─── PASSWORD GATE ────────────────────────────────────────────────────────────
+// ─── PASSWORD GATE  ────────────────────────────────────────────────────────────
 const ACCESS_CODE = "terraform24";
 
 function PasswordGate({ onUnlock }) {
